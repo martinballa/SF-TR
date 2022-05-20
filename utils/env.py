@@ -136,6 +136,7 @@ class MiniCrafter(gym.Env, utils.EzPickle):
 
         if self.args.render:
             self.render()
+
         return self.get_observation(), reward, done, np.array(item_type)
 
     def get_observation(self):

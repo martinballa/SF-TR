@@ -41,8 +41,6 @@ def train_target(args, agent, mem, env, train_logger, eval_env, eval_logger, res
 
         next_state, reward, done, phi = env.step(action)  # Step
 
-        if args.reward_clip > 0:
-            reward = max(min(reward, args.reward_clip), -args.reward_clip)  # Clip rewards
         mem.append((state, action, next_state, reward, done, phi, task_vector))  # Append transition to memory
 
         steps += 1

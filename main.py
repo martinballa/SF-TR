@@ -15,11 +15,9 @@ from utils.env import MiniCrafter
 from utils.train_loops import *
 
 parser = argparse.ArgumentParser(description='SF')
+
 # SF arguments
-
-
-# mainly SF args
-parser.add_argument('--phi-dims', type=int, default=4, help='Dimension of the Successor Features')
+parser.add_argument('--phi-dims', type=int, default=5, help='Dimension of the Successor Features')
 parser.add_argument('--n-policies', type=int, default=1, help='Number of policies to use with SFs')
 parser.add_argument('--epsilon', type=float, default=1.0, help='Initial epsilon for exploration (gets linearly reduced during training)')
 parser.add_argument('--gamma', type=float, default=0.9, help='Discount rate')
@@ -30,52 +28,47 @@ parser.add_argument('--train-mode', type=str, default='target', choices=['target
 parser.add_argument('--replace-w', action='store_true', help='When updating psi loss replace original w to the policy\'s w')
 parser.add_argument('--hindsight', action='store_true', help='When updating SF it applies Hindsight Task replacement on the sampled experience')
 
-
 # Env args
 parser.add_argument('--obs-type', type=str, default='obs', choices=["obs", "inv", "task", "full"], help="Observation type, observation only, obs+inventory or obs+inv+task")
-parser.add_argument('--scenario', type=str, default='min', choices=["pretrain", "random", "random_pen", "craft_staff", "craft_sword", "craft_bow",  "craft_staff_neg", "craft_sword_neg", "craft_bow_neg", "all", "none", "one_item", "two_item", "min"], help="Reward scenario")
+parser.add_argument('--scenario', type=str, default='random', choices=["pretrain", "random", "random_pen", "craft_staff", "craft_sword", "craft_bow",  "craft_staff_neg", "craft_sword_neg", "craft_bow_neg", "all", "one_item", "two_item"], help="Reward scenario")
 
 # common args
 parser.add_argument('--gpu-id', type=int, default=0, help='Specify a GPU ID, mostly used when computer has multiple GPUs')
-parser.add_argument('--id', type=str, default='default', help='Experiment ID')
 parser.add_argument('--logdir', type=str, default='logdir')
 parser.add_argument('--seed', type=int, default=-1, help='Random seed')
 parser.add_argument('--disable-cuda', action='store_true', help='Disable CUDA')
 parser.add_argument('--T-max', type=int, default=int(1e6), metavar='STEPS', help='Number of agent-env interactions')
-parser.add_argument('--max-episode-length', type=int, default=int(108e3), metavar='LENGTH', help='Max episode length in game frames (0 to disable)')
 parser.add_argument('--framestack', type=int, default=1, metavar='T', help='Number of consecutive states processed')
-parser.add_argument('--architecture', type=str, default='canonical', choices=['canonical', 'data-efficient'], metavar='ARCH', help='Network architecture')
 parser.add_argument('--hidden-size', type=int, default=64, metavar='SIZE', help='Network hidden size')
 parser.add_argument('--model', type=str, metavar='PARAMS', help='Pretrained model (state dict)')
 parser.add_argument('--memory-capacity', type=int, default=int(1e6), metavar='CAPACITY', help='Experience replay memory capacity')
-parser.add_argument('--replay-frequency', type=int, default=4, metavar='k', help='Frequency of sampling from memory')
-parser.add_argument('--discount', type=float, default=0.99, metavar='γ', help='Discount factor')
-parser.add_argument('--target-update', type=int, default=int(2e3), metavar='τ', help='Number of steps after which to update target network')
-parser.add_argument('--reward-clip', type=int, default=1, metavar='VALUE', help='Reward clipping (0 to disable)')
-parser.add_argument('--learning-rate', type=float, default=0.0000625, metavar='η', help='Learning rate')
+parser.add_argument('--replay-frequency', type=int, default=4, help='Frequency of sampling from memory')
+parser.add_argument('--target-update', type=int, default=int(2e3), help='Number of steps after which to update target network')
+parser.add_argument('--learning-rate', type=float, default=1e-4, help='Learning rate')
 parser.add_argument('--batch-size', type=int, default=32, metavar='SIZE', help='Batch size')
 parser.add_argument('--norm-clip', type=float, default=10, metavar='NORM', help='Max L2 norm for gradient clipping')
 parser.add_argument('--learn-start', type=int, default=int(1e3), metavar='STEPS', help='Number of steps before starting training')
 parser.add_argument('--evaluate', action='store_true', help='Evaluate only')
 parser.add_argument('--evaluation-interval', type=int, default=20000, metavar='STEPS', help='Number of training steps between evaluations')
-parser.add_argument('--evaluation-episodes', type=int, default=1, metavar='N', help='Number of evaluation episodes to average over')
+parser.add_argument('--evaluation-episodes', type=int, default=5, metavar='N', help='Number of evaluation episodes to average over')
 
-parser.add_argument('--render', action='store_true', help='Display screen (testing only)')
+parser.add_argument('--render', action='store_true', help='Render game')
 parser.add_argument('--enable-cudnn', action='store_true', help='Enable cuDNN (faster but nondeterministic)')
 parser.add_argument('--checkpoint-interval', default=1000000, help='How often to checkpoint the model, defaults to 0 (never checkpoint)')
-parser.add_argument('--memory', help='Path to save/load the memory from')
 
 # Setup
 args = parser.parse_args()
 if args.seed == -1:
   args.seed = np.random.randint(1, 10000)
   print(f"chosen seed = {args.seed}")
-if args.train_mode == "pretrain" or args.scenario == "pretrain": # pretrain overwrites the scenario
+# pretrain overwrites the scenario
+if args.train_mode == "pretrain" or args.scenario == "pretrain":
   args.scenario = "pretrain"
   args.train_mode = "pretrain"
 
 if args.scenario in ["random", "random_pen"]:
-  args.obs_type = "full" # goal conditioned
+  # goal conditioned
+  args.obs_type = "full"
 
 print(' ' * 26 + 'Options')
 for k, v in vars(args).items():
@@ -88,7 +81,7 @@ if args.model:
 args.logdir = os.path.expanduser(args.logdir)
 date_time = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S'))
 exp_name = f"{args.scenario}/{args.seed}_{date_time}"
-results_dir = os.path.join(args.logdir, exp_name) # , args.id)
+results_dir = os.path.join(args.logdir, exp_name)
 if not os.path.exists(results_dir):
   os.makedirs(results_dir)
 if not args.evaluate:
@@ -117,8 +110,6 @@ else:
   args.device = torch.device('cpu')
 
 # Environment setup env (training) eval_env (testing)
-args.framestack = 1
-args.hidden_dims = 64
 args.phi_dims = len(MiniCrafter.get_feature_dict())
 env = MiniCrafter(args)
 action_space = env.action_space.n
@@ -170,7 +161,6 @@ elif args.train_mode == "transfer":
       results, avg_reward = target_evaluate(args, transfer_env, args.T_max, agent)
       transfer_logger.write([("SF", args.model, args.n_policies, args.replace_w, args.hindsight, training_scenario, t, args.seed, ) + (results[i]) for i in range(len(results))])
 
-
 else:
   # main training loop calls
   if args.scenario == "pretrain":
@@ -178,6 +168,6 @@ else:
   else:
     train_target(args, agent, mem, env, train_logger, eval_env, eval_logger, results_dir)
 
-
+# close loggers
 train_logger.close()
 eval_logger.close()

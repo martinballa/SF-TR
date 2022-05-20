@@ -23,6 +23,13 @@ class DQN(nn.Module):
         self.convs = nn.Sequential(nn.Conv2d(input_dims[0] * self.args.framestack, 8, 3, stride=1), nn.ReLU())
         with torch.no_grad():
             self.conv_out_size = self.convs(torch.zeros(1, *self.input_dims)).flatten().shape[0]
+
+        # # path from inventory/resources
+        if scalar_dims > 0:
+            self.scalar_input = nn.Linear(scalar_dims, 16)
+            self.scalar_fc = nn.Linear(16, self.hidden_units)
+            self.conv_out_size += self.hidden_units
+
         self.phi = nn.Linear(self.conv_out_size, self.hidden_units)
 
         # get SF psi
@@ -106,6 +113,7 @@ class SF():
         self.phi_dims = args.phi_dims
         self.n_policies = args.n_policies
         self.framestack = args.framestack
+        self.scalar_dims = env.get_scalar_dims() if args.obs_type != "obs" else 0
 
         self.env = env
         self.n_actions = env.action_space.n
@@ -114,7 +122,7 @@ class SF():
         self.random = np.random.RandomState(args.seed)
         torch.manual_seed(args.seed)
 
-        self.q_net = DQN(args, self.input_dims, self.n_actions).to(args.device)
+        self.q_net = DQN(args, self.input_dims, self.n_actions, scalar_dims=self.scalar_dims).to(args.device)
         if args.model:  # Load pretrained model if provided
             if os.path.isfile(args.model):
                 checkpoint = torch.load(args.model,
@@ -123,7 +131,7 @@ class SF():
                 print("Loading trained model: " + args.model)
             else:
                 raise FileNotFoundError(args.model)
-        self.target_net = DQN(args, self.input_dims, self.n_actions).to(args.device)
+        self.target_net = DQN(args, self.input_dims, self.n_actions, scalar_dims=self.scalar_dims).to(args.device)
         self.update_target_net()
 
         params = list(self.q_net.parameters())
@@ -216,7 +224,7 @@ class SF():
                 else:
                     w = transitions[6]
 
-                # select argmax Q(s',a')
+                # select next action as a' = argmax Q(s',a')
                 latent_ = self.target_net.encode(transitions[2])
                 psi_ = self.target_net.psi_(latent_)
                 q_ = self.target_net.q_(psi_, w=w, policy=policy)
