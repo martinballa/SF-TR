@@ -26,5 +26,18 @@ When the reward function is stationary the same events give the same rewards for
 Linear reward functions can be expressed as a linear combination of the events and their weights.
 Some environments give negative rewards for collecting the wrong resources/items (_random_pen_, _craft_sword_neg_)
 
+You may cite this project as:
+```
+@INPROCEEDINGS{balla2022relabelling,
+  author={Balla, Martin and Perez-Liebana, Diego},
+  booktitle={2022 IEEE Conference on Games (CoG)}, 
+  title={Task Relabelling for Multi-task Transfer using Successor Features}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={353-360},
+  doi={10.1109/CoG51982.2022.9893550}}
+```
+
 
 
